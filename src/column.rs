@@ -8,6 +8,7 @@ pub enum ValueType {
     UShort = 16,
     UInt,
     ULong,
+    Unknown19 = 19, // probably padding?
     UNum = 32, // this thing is an oxymoron
     UNumFixed, // <- because of that
     Blob = 48,
@@ -30,6 +31,7 @@ pub enum Value {
     UShort(u16),
     UInt(u32),
     ULong(u64),
+    Unknown19,
     UNum(u64),
     UNumFixed(u64),
     Blob(Vec<u8>),
@@ -93,7 +95,7 @@ pub struct Schema {
 }
 
 impl Schema {
-    pub fn from_reader<R: ReadExt>(reader: &mut R) -> Result<Self, Error> {
+    pub fn parse<R: ReadExt>(reader: &mut R) -> Result<Self, Error> {
         let value_type = ValueType::try_from_primitive(reader.read_u8()?)
             .map_err(|e| Error::InvalidSchemaType(e.number))?;
         let fixed_size = value_type.is_fixed()
@@ -106,7 +108,7 @@ impl Schema {
         })
     }
 
-    pub fn read<R: ReadExt>(&self, reader: &mut R) -> Result<Value, Error> {
+    pub fn read_value<R: ReadExt>(&self, reader: &mut R) -> Result<Value, Error> {
         Ok(match (self.value_type, self.fixed_size) {
             (ValueType::UShort, _) => Value::UShort(reader.read_vlq(2)? as _),
             (ValueType::UInt, _) => Value::UInt(reader.read_vlq(4)? as _),
@@ -129,6 +131,9 @@ impl Schema {
             (ValueType::TextFixed, Some(fixed_size)) => reader.read_blob(fixed_size as _)
                 .map(|buf| String::from_utf8(buf))?
                 .map(Value::TextFixed)?,
+
+            (ValueType::Unknown19, _) => reader.skip(8)
+                .map(|_| Value::Unknown19)?,
 
             _ => return Err(Error::InvalidSchema)
         })

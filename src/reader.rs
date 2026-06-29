@@ -2,17 +2,17 @@ use std::io::Cursor;
 
 use crate::{column::{Schema, Value}, ext::ReadExt, Error};
 
-pub struct BsvReader<'a, R: ReadExt> {
-    reader: &'a mut R,
-    pub header: AnonymousSchemaBsvHeader,
+pub struct BsvReader<R: ReadExt> {
+    reader: R,
+    header: AnonymousSchemaBsvHeader,
 
     row_index: u64,
     row_buffer: Vec<Value>,
     broken: bool
 }
 
-impl<'a, R: ReadExt> BsvReader<'a, R> {
-    pub fn new(reader: &'a mut R) -> Result<Self, Error> {
+impl<R: ReadExt> BsvReader<R> {
+    pub fn new(mut reader: R) -> Result<Self, Error> {
         let mut buffer = [0u8; 2];
 
         reader.read_exact(&mut buffer)?;
@@ -25,7 +25,7 @@ impl<'a, R: ReadExt> BsvReader<'a, R> {
             return Err(Error::Unimplemented("apriori BSV"));
         }
 
-        let header = AnonymousSchemaBsvHeader::from_reader(reader)?;
+        let header = AnonymousSchemaBsvHeader::parse(&mut reader)?;
         let row_buffer = Vec::with_capacity(header.schemas.len());
         Ok(Self {
             reader,
@@ -49,7 +49,7 @@ impl<'a, R: ReadExt> BsvReader<'a, R> {
         self.row_buffer.clear();
         for schema in self.header.schemas.iter() {
             self.row_buffer.push(
-                schema.read(self.reader)
+                schema.read_value(&mut self.reader)
                     .inspect_err(|_| self.broken = true)?
             );
         }
@@ -66,20 +66,24 @@ impl<'a, R: ReadExt> BsvReader<'a, R> {
 
         Ok(rows)
     }
+    
+    pub fn header(&self) -> &AnonymousSchemaBsvHeader {
+        &self.header
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnonymousSchemaBsvHeader {
-    pub size: u16,
-    pub row_count: u64,
-    pub max_row_size: u64,
-    pub schema_version: u32,
-    pub schema_count: u32,
-    pub schemas: Vec<Schema>
+    size: u16,
+    row_count: u64,
+    max_row_size: u64,
+    schema_version: u32,
+    schema_count: u32,
+    schemas: Vec<Schema>
 }
 
 impl AnonymousSchemaBsvHeader {
-    pub fn from_reader<R: ReadExt>(reader: &mut R) -> Result<Self, Error> {
+    pub fn parse<R: ReadExt>(reader: &mut R) -> Result<Self, Error> {
         let mut size_buffer = [0u8; 2];
         reader.read_exact(&mut size_buffer)?;
 
@@ -93,7 +97,7 @@ impl AnonymousSchemaBsvHeader {
         let schema_version = reader.read_vlq(4)? as u32;
         let schema_count = reader.read_vlq(4)? as u32;
         let schemas = (0..schema_count)
-            .map(|_| Schema::from_reader(&mut reader))
+            .map(|_| Schema::parse(&mut reader))
             .collect::<Result<Vec<Schema>, Error>>()?;
 
         Ok(Self {
@@ -104,6 +108,30 @@ impl AnonymousSchemaBsvHeader {
             schema_count,
             schemas
         })
+    }
+    
+    pub fn size(&self) -> u16 {
+        self.size
+    }
+    
+    pub fn row_count(&self) -> u64 {
+        self.row_count
+    }
+    
+    pub fn max_row_size(&self) -> u64 {
+        self.max_row_size
+    }
+    
+    pub fn schema_version(&self) -> u32 {
+        self.schema_version
+    }
+    
+    pub fn schema_count(&self) -> u32 {
+        self.schema_count
+    }
+    
+    pub fn schemas(&self) -> &[Schema] {
+        &self.schemas
     }
 }
 
