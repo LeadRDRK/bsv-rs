@@ -95,7 +95,7 @@ pub struct Schema {
 }
 
 impl Schema {
-    pub fn parse<R: ReadExt>(reader: &mut R) -> Result<Self, Error> {
+    pub fn parse<R: ReadExt>(mut reader: R) -> Result<Self, Error> {
         let value_type = ValueType::try_from_primitive(reader.read_u8()?)
             .map_err(|e| Error::InvalidSchemaType(e.number))?;
         let fixed_size = value_type.is_fixed()
@@ -108,7 +108,7 @@ impl Schema {
         })
     }
 
-    pub fn read_value<R: ReadExt>(&self, reader: &mut R) -> Result<Value, Error> {
+    pub fn read_value<R: ReadExt>(&self, mut reader: R) -> Result<Value, Error> {
         Ok(match (self.value_type, self.fixed_size) {
             (ValueType::UShort, _) => Value::UShort(reader.read_vlq(2)? as _),
             (ValueType::UInt, _) => Value::UInt(reader.read_vlq(4)? as _),

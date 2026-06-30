@@ -83,7 +83,7 @@ pub struct AnonymousSchemaBsvHeader {
 }
 
 impl AnonymousSchemaBsvHeader {
-    pub fn parse<R: ReadExt>(reader: &mut R) -> Result<Self, Error> {
+    pub fn parse<R: ReadExt>(mut reader: R) -> Result<Self, Error> {
         let mut size_buffer = [0u8; 2];
         reader.read_exact(&mut size_buffer)?;
 
