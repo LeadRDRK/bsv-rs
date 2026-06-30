@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{fs::File, io::BufReader};
 
 use bsv::reader::BsvReader;
 use clap::Parser;
@@ -20,7 +20,7 @@ struct Args {
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let mut bsv = BsvReader::new(File::open(args.path)?)?;
+    let mut bsv = BsvReader::new(BufReader::new(File::open(args.path)?))?;
 
     if args.csv {
         let mut writer = csv::Writer::from_writer(std::io::stdout());
