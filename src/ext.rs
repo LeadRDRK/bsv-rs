@@ -71,7 +71,7 @@ pub trait ReadExt: Read {
     }
 
     fn skip(&mut self, len: usize) -> std::io::Result<()> {
-        self.read_exact(&mut Vec::with_capacity(len))
+        self.read_exact(&mut vec![0u8; len])
     }
 }
 
