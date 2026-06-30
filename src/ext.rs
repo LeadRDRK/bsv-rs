@@ -69,10 +69,6 @@ pub trait ReadExt: Read {
         String::from_utf8(buffer)
             .map_err(|e| Error::new(ErrorKind::InvalidData, e))
     }
-
-    fn skip(&mut self, len: usize) -> std::io::Result<()> {
-        self.read_exact(&mut vec![0u8; len])
-    }
 }
 
 impl<R: Read + ?Sized> ReadExt for R {}

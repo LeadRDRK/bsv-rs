@@ -132,7 +132,7 @@ impl Schema {
                 .map(|buf| String::from_utf8(buf))?
                 .map(Value::TextFixed)?,
 
-            (ValueType::Unknown19, _) => reader.skip(8)
+            (ValueType::Unknown19, _) => reader.read_exact(&mut [0u8; 8])
                 .map(|_| Value::Unknown19)?,
 
             _ => return Err(Error::InvalidSchema)
